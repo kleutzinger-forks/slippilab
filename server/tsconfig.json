@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "../dist-server",
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "types": ["node"],
+    "declaration": false,
+    "resolveJsonModule": true
+  },
+  "include": ["./**/*.ts", "../src/parser/**/*.ts", "../src/common/**/*.ts"],
+  "exclude": ["node_modules"]
+}

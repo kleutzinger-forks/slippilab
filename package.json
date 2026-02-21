@@ -3,14 +3,19 @@
   "version": "0.0.0",
   "author": "Frank Borden",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:postgres --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src",
+    "start:server": "node dist-server/index.js",
     "preview": "wrangler pages dev dist",
     "types": "tsc",
     "format": "prettier -w src/"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@hono/node-server": "^1.11.0",
     "@jsonjoy.com/json-pack": "^1.0.2",
     "@shelacek/ubjson": "^1.1.1",
     "@solid-primitives/raf": "^2.1.4",
@@ -24,12 +29,15 @@
     "@zag-js/toast": "^0.2.4",
     "fflate": "^0.7.4",
     "hono": "^4.2.8",
+    "postgres": "^3.4.4",
     "solid-js": "^1.6.3",
     "zoo-ids": "^2.0.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240423.0",
+    "@types/node": "^20.14.0",
     "autoprefixer": "^10.4.13",
+    "esbuild": "^0.27.3",
     "postcss": "^8.4.19",
     "prettier": "^2.8.1",
     "prettier-plugin-tailwindcss": "^0.2.0",
