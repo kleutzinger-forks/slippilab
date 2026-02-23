@@ -8,4 +8,9 @@ export default defineConfig({
   resolve: {
     conditions: ["browser"],
   },
+  server: {
+    proxy: {
+      "/api": "http://localhost:3000",
+    },
+  },
 });

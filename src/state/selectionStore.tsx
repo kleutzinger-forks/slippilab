@@ -7,7 +7,7 @@ import {
 } from "~/common/ids";
 import { createComputed, createEffect, createSignal, on } from "solid-js";
 import { fileStore } from "~/state/fileStore";
-import { listCloudReplays, loadFromCloud } from "~/cloudClient";
+import { listCloudReplays, listCloudSets, loadFromCloud, ReplaySet } from "~/cloudClient";
 
 export type Filter =
   | { type: "character"; label: ExternalCharacterName }
@@ -201,6 +201,9 @@ function wrap(index: number, limit: number): number {
 }
 
 const [cloudStubs, setCloudStubs] = createSignal<ReplayStub[]>([]);
+const [cloudSets, setCloudSets] = createSignal<ReplaySet[]>([]);
+export { cloudSets };
+
 export const cloudLibrary = createSelectionStore({
   stubs: cloudStubs,
   getFile(stub) {
@@ -208,16 +211,25 @@ export const cloudLibrary = createSelectionStore({
   },
 });
 
-listCloudReplays().then((rows) => {
-  setCloudStubs(rows);
+async function initCloudSets() {
+  const sets = await listCloudSets();
+  setCloudSets(sets);
+  const flat = sets.flatMap((s) => [...s.replays].reverse());
+  setCloudStubs(flat);
   const path = location.pathname.slice(1);
   if (path !== "") {
-    const stub = cloudStubs().find((s) => s.fileName === `${path}.slp`);
+    const stub = flat.find((s) => s.fileName === `${path}.slp`);
     if (stub !== undefined) {
       cloudLibrary.select(stub);
     }
   }
-});
+}
+
+export async function refreshCloudSets() {
+  await initCloudSets();
+}
+
+initCloudSets();
 
 export const localLibrary = createSelectionStore({
   stubs: () => fileStore.stubs,

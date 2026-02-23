@@ -7,9 +7,10 @@ Base URL: `http://localhost:3000` (or wherever the server is hosted)
 ## Single file — `POST /api/replay`
 
 Send the raw `.slp` bytes as the request body. An optional `note` query parameter
-can be attached to annotate the upload.
+becomes the name of the set in the UI.
 
-Every upload (single or batch) is assigned a `batch_id` for grouping.
+Every upload (single or multi-file) creates a **set** (`batch_id`) that groups the
+files together. Sets are displayed in the sidebar newest-first and can be renamed.
 
 **JavaScript**
 ```js
@@ -52,7 +53,7 @@ result = res.json()
 ## Multiple files — `POST /api/replays`
 
 Send as `multipart/form-data`. All files go under the field name `files` and are
-stored in the order submitted. An optional `note` field annotates the whole batch.
+stored in the order submitted. An optional `note` field becomes the set name in the UI.
 
 **JavaScript**
 ```js
@@ -161,3 +162,50 @@ const { data } = await res.json();
 ```
 
 Replays within the same `batch_id` were uploaded together and are ordered by `batch_order`.
+
+---
+
+## Listing sets — `GET /api/sets`
+
+Returns all sets (uploads grouped together) newest-first, with each set's replays
+ordered by upload position.
+
+```js
+const res = await fetch("http://localhost:3000/api/sets");
+const { data } = await res.json();
+```
+
+**Response**
+```json
+{
+  "data": [
+    {
+      "id": "GleamingTinyChicken",
+      "created_at": "2024-01-01 12:00:00",
+      "name": "tournament grand finals",
+      "replays": [
+        {
+          "id": "SpotlessGiantPeafowl",
+          "file_name": "SpotlessGiantPeafowl.slp",
+          "batch_order": 0,
+          "...": "same fields as /api/replays"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Renaming a set — `PATCH /api/set/<set_id>`
+
+```js
+await fetch("http://localhost:3000/api/set/GleamingTinyChicken", {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "grand finals set 1" }),
+});
+```
+
+**Response:** `{ "ok": true }`

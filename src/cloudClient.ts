@@ -1,6 +1,13 @@
 import { ReplayData } from "~/common/types";
 import { ReplayStub } from "~/state/selectionStore";
 
+export interface ReplaySet {
+  id: string;
+  name: string | null;
+  createdAt: string;
+  replays: ReplayStub[];
+}
+
 interface ReplayRow {
   id: number;
   created_at: string;
@@ -64,6 +71,26 @@ export async function loadFromCloud(
   }
 }
 
+function mapRow(row: ReplayRow) {
+  return {
+    createdAt: row.created_at,
+    fileName: row.file_name,
+    id: row.id,
+    stageId: row.external_stage_id,
+    numFrames: row.num_frames,
+    playedOn: row.played_on,
+    isTeams: row.is_teams,
+    playerSettings: row.players.map((p) => ({
+      playerIndex: p.player_index,
+      connectCode: p.connect_code,
+      displayName: p.display_name,
+      nametag: p.nametag,
+      externalCharacterId: p.external_character_id,
+      teamId: p.team_id,
+    })),
+  };
+}
+
 export async function listCloudReplays(): Promise<ReplayStub[]> {
   const res = await fetch("/api/replays");
   const { data, error } = await res.json();
@@ -75,21 +102,30 @@ export async function listCloudReplays(): Promise<ReplayStub[]> {
     .sort((a, b) =>
       a.created_at < b.created_at ? 1 : a.created_at === b.created_at ? 0 : -1
     )
-    .map((row) => ({
-      createdAt: row.created_at,
-      fileName: row.file_name,
-      id: row.id,
-      stageId: row.external_stage_id,
-      numFrames: row.num_frames,
-      playedOn: row.played_on,
-      isTeams: row.is_teams,
-      playerSettings: row.players.map((p) => ({
-        playerIndex: p.player_index,
-        connectCode: p.connect_code,
-        displayName: p.display_name,
-        nametag: p.nametag,
-        externalCharacterId: p.external_character_id,
-        teamId: p.team_id,
-      })),
-    }));
+    .map(mapRow);
+}
+
+export async function listCloudSets(): Promise<ReplaySet[]> {
+  const res = await fetch("/api/sets");
+  const { data, error } = await res.json();
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  return (data as { id: string; created_at: string; name: string | null; replays: ReplayRow[] }[]).map(
+    (s) => ({
+      id: s.id,
+      name: s.name,
+      createdAt: s.created_at,
+      replays: s.replays.map(mapRow),
+    })
+  );
+}
+
+export async function renameCloudSet(setId: string, name: string): Promise<void> {
+  await fetch(`/api/set/${setId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
 }

@@ -1,9 +1,10 @@
 import { createOptions, Select } from "@thisbeyond/solid-select";
-import { createMemo, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { characterNameByExternalId, stageNameByExternalId } from "~/common/ids";
 import { Picker } from "~/components/common/Picker";
 import { StageBadge } from "~/components/common/Badge";
-import { ReplayStub, SelectionStore } from "~/state/selectionStore";
+import { ReplayStub, refreshCloudSets, SelectionStore } from "~/state/selectionStore";
+import { ReplaySet, renameCloudSet } from "~/cloudClient";
 
 const filterProps = createOptions(
   [
@@ -18,7 +19,9 @@ const filterProps = createOptions(
     createable: (code) => ({ type: "codeOrName", label: code }),
   }
 );
-export function Replays(props: { selectionStore: SelectionStore }) {
+export function Replays(props: { selectionStore: SelectionStore; sets?: ReplaySet[] }) {
+  const hasSets = createMemo(() => props.sets !== undefined && props.sets.length > 0);
+
   return (
     <>
       <div class="flex max-h-96 w-full flex-col items-center gap-2 overflow-y-auto sm:h-full md:max-h-screen">
@@ -38,25 +41,132 @@ export function Replays(props: { selectionStore: SelectionStore }) {
           />
         </div>
         <Show
-          when={props.selectionStore.data.filteredStubs.length > 0}
-          fallback={<div>No matching results</div>}
+          when={hasSets()}
+          fallback={
+            <Show
+              when={props.selectionStore.data.filteredStubs.length > 0}
+              fallback={<div>No matching results</div>}
+            >
+              <Picker
+                items={props.selectionStore.data.filteredStubs}
+                render={(stub) => <GameInfo replayStub={stub} />}
+                onClick={(fileAndSettings) =>
+                  props.selectionStore.select(fileAndSettings)
+                }
+                selected={(stub) =>
+                  props.selectionStore.data.selectedFileAndStub?.[1] === stub
+                }
+                estimateSize={(stub) =>
+                  stub.playerSettings.filter(Boolean).length === 4 ? 56 : 32
+                }
+              />
+            </Show>
+          }
         >
-          <Picker
-            items={props.selectionStore.data.filteredStubs}
-            render={(stub) => <GameInfo replayStub={stub} />}
-            onClick={(fileAndSettings) =>
-              props.selectionStore.select(fileAndSettings)
-            }
-            selected={(stub) =>
-              props.selectionStore.data.selectedFileAndStub?.[1] === stub
-            }
-            estimateSize={(stub) =>
-              stub.playerSettings.filter(Boolean).length === 4 ? 56 : 32
-            }
-          />
+          <Show
+            when={props.selectionStore.data.filteredStubs.length > 0}
+            fallback={<div>No matching results</div>}
+          >
+            <GroupedSetList sets={props.sets!} selectionStore={props.selectionStore} />
+          </Show>
         </Show>
       </div>
     </>
+  );
+}
+
+function GroupedSetList(props: { sets: ReplaySet[]; selectionStore: SelectionStore }) {
+  const filteredSet = createMemo(() =>
+    new Set(props.selectionStore.data.filteredStubs)
+  );
+  const filtersActive = createMemo(
+    () => props.selectionStore.data.filters.length > 0
+  );
+
+  return (
+    <div class="w-full">
+      <For each={props.sets}>
+        {(set) => {
+          const visibleReplays = createMemo(() => {
+            const ordered = [...set.replays].reverse();
+            return filtersActive()
+              ? ordered.filter((r) => filteredSet().has(r))
+              : ordered;
+          });
+          return (
+            <Show when={visibleReplays().length > 0}>
+              <SetHeader set={set} />
+              <For each={visibleReplays()}>
+                {(stub, i) => (
+                  <div
+                    class="flex w-full cursor-pointer items-center gap-1 pl-4 hover:bg-slate-100"
+                    classList={{ "bg-slate-200": props.selectionStore.data.selectedFileAndStub?.[1] === stub }}
+                    onClick={() => props.selectionStore.select(stub)}
+                  >
+                    <span class="shrink-0 text-xs text-slate-400">({i() + 1})</span>
+                    <GameInfo replayStub={stub} />
+                  </div>
+                )}
+              </For>
+            </Show>
+          );
+        }}
+      </For>
+    </div>
+  );
+}
+
+function SetHeader(props: { set: ReplaySet }) {
+  const [editing, setEditing] = createSignal(false);
+  const [draftName, setDraftName] = createSignal("");
+  let inputRef: HTMLInputElement | undefined;
+
+  createEffect(() => {
+    if (editing() && inputRef) inputRef.focus();
+  });
+
+  async function commit() {
+    const trimmed = draftName().trim();
+    await renameCloudSet(props.set.id, trimmed);
+    await refreshCloudSets();
+    setEditing(false);
+  }
+
+  return (
+    <div class="flex items-center gap-2 border-t-2 border-slate-400 bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-600">
+      <Show
+        when={editing()}
+        fallback={
+          <span
+            class="flex-grow cursor-pointer hover:underline"
+            onClick={() => {
+              setDraftName(props.set.name ?? "");
+              setEditing(true);
+            }}
+          >
+            {props.set.name?.trim() || "Unnamed Set"}
+          </span>
+        }
+      >
+        <input
+          ref={inputRef}
+          class="flex-grow rounded border px-1 text-sm"
+          value={draftName()}
+          onInput={(e) => setDraftName(e.currentTarget.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+      </Show>
+      <span class="text-xs font-normal text-slate-400">
+        {new Date(
+          props.set.replays.map((r) => r.playedOn).filter(Boolean).sort()[0] ??
+            props.set.createdAt
+        ).toLocaleDateString()}
+      </span>
+    </div>
   );
 }
 

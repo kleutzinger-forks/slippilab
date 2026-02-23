@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getAllReplays, getReplayByFileName } from "../db/index.js";
+import { getAllReplays, getReplayByFileName, getAllSetsWithReplays, renameSet } from "../db/index.js";
 import { downloadFile } from "../storage/local.js";
 
 const app = new Hono()
@@ -10,6 +10,23 @@ const app = new Hono()
       players: typeof r.players === "string" ? JSON.parse(r.players) : r.players,
     }));
     return c.json({ data: merged });
+  })
+  .get("/sets", async (c) => {
+    const sets = getAllSetsWithReplays();
+    const merged = sets.map((s) => ({
+      ...s,
+      replays: s.replays.map((r) => ({
+        ...r,
+        players: typeof r.players === "string" ? JSON.parse(r.players) : r.players,
+      })),
+    }));
+    return c.json({ data: merged });
+  })
+  .patch("/set/:id", async (c) => {
+    const id = c.req.param("id");
+    const { name } = await c.req.json<{ name: string }>();
+    renameSet(id, name);
+    return c.json({ ok: true });
   })
   .get("/replay/:fileName", async (c) => {
     const fileName = c.req.param("fileName");

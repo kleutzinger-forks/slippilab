@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createHash } from "crypto";
 import { UbjsonDecoder } from "@jsonjoy.com/json-pack/lib/ubjson/index.js";
 import { parseReplay } from "../../src/parser/parser.js";
-import { insertReplay, insertBatch, getReplayByHash, updateReplayBatch } from "../db/index.js";
+import { insertReplay, insertSet, getReplayByHash, updateReplayBatch } from "../db/index.js";
 import { uploadFile } from "../storage/local.js";
 // @ts-ignore: zoo-ids doesn't ship types
 import { generateId } from "zoo-ids";
@@ -59,7 +59,7 @@ const app = new Hono()
     try {
       const note = c.req.query("note") ?? null;
       const batchId: string = generateId(`${Date.now()}-batch`);
-      insertBatch(batchId, note);
+      insertSet(batchId, note);
 
       const blob = await c.req.blob();
       console.log(`[upload] blob size: ${blob.size} bytes`);
@@ -86,7 +86,7 @@ const app = new Hono()
       console.log(`[upload] ${files.length} file(s) received, note: ${note}`);
 
       const batchId: string = generateId(`${Date.now()}-batch`);
-      insertBatch(batchId, note);
+      insertSet(batchId, note);
 
       const results = await Promise.all(
         files.map(async (file, index) => {

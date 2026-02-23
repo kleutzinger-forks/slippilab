@@ -8,10 +8,14 @@ const db = new Database(dbPath);
 // Enable WAL mode for better concurrent read performance
 db.pragma("journal_mode = WAL");
 
-export interface UploadBatch {
+export interface SetRecord {
   id: string;
   created_at: string;
-  note: string | null;
+  name: string | null;
+}
+
+export interface SetRecordWithReplays extends SetRecord {
+  replays: ReplayRecord[];
 }
 
 export interface ReplayRecord {
@@ -51,16 +55,37 @@ export function updateReplayBatch(id: string, batchId: string, batchOrder: numbe
     .run(batchId, batchOrder, id);
 }
 
-export function getBatchReplays(batchId: string): ReplayRecord[] {
+export function getSetReplays(setId: string): ReplayRecord[] {
   return db
     .prepare("SELECT * FROM replays WHERE batch_id = ? ORDER BY batch_order ASC")
-    .all(batchId) as ReplayRecord[];
+    .all(setId) as ReplayRecord[];
 }
 
-export function insertBatch(id: string, note: string | null): void {
+export function insertSet(id: string, name: string | null): void {
   db.prepare(
-    `INSERT INTO upload_batches (id, created_at, note) VALUES (?, datetime('now'), ?)`
-  ).run(id, note);
+    `INSERT INTO sets (id, created_at, name) VALUES (?, datetime('now'), ?)`
+  ).run(id, name);
+}
+
+export function getAllSetsWithReplays(): SetRecordWithReplays[] {
+  // Order sets by the earliest game's played_on timestamp, falling back to created_at
+  const sets = db.prepare(`
+    SELECT s.*
+    FROM sets s
+    LEFT JOIN replays r ON r.batch_id = s.id AND r.played_on IS NOT NULL
+    GROUP BY s.id
+    ORDER BY COALESCE(MIN(r.played_on), s.created_at) DESC
+  `).all() as SetRecord[];
+  return sets.map((set) => ({
+    ...set,
+    replays: db.prepare(
+      "SELECT * FROM replays WHERE batch_id = ? ORDER BY batch_order ASC"
+    ).all(set.id) as ReplayRecord[],
+  }));
+}
+
+export function renameSet(id: string, name: string): void {
+  db.prepare("UPDATE sets SET name = ? WHERE id = ?").run(name, id);
 }
 
 export function insertReplay(replay: {
@@ -94,10 +119,10 @@ export function insertReplay(replay: {
 
 export function runMigrations(): void {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS upload_batches (
+    CREATE TABLE IF NOT EXISTS sets (
       id TEXT PRIMARY KEY,
       created_at TEXT DEFAULT (datetime('now')),
-      note TEXT
+      name TEXT
     );
 
     CREATE TABLE IF NOT EXISTS replays (
@@ -109,7 +134,7 @@ export function runMigrations(): void {
       external_stage_id INTEGER,
       is_teams INTEGER DEFAULT 0,
       players TEXT,
-      batch_id TEXT REFERENCES upload_batches(id),
+      batch_id TEXT REFERENCES sets(id),
       batch_order INTEGER,
       file_hash TEXT UNIQUE
     );
@@ -118,11 +143,13 @@ export function runMigrations(): void {
     CREATE INDEX IF NOT EXISTS idx_replays_batch_id ON replays(batch_id, batch_order);
   `);
 
-  // Add new columns to existing DBs that predate this migration
+  // Add new columns / rename tables for existing DBs
   for (const sql of [
     "ALTER TABLE replays ADD COLUMN batch_id TEXT",
     "ALTER TABLE replays ADD COLUMN batch_order INTEGER",
     "ALTER TABLE replays ADD COLUMN file_hash TEXT UNIQUE",
+    "ALTER TABLE upload_batches RENAME TO sets",
+    "ALTER TABLE sets RENAME COLUMN note TO name",
   ]) {
     try { db.exec(sql); } catch {}
   }

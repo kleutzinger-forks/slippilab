@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:better-sqlite3 --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src",
+    "build:server:watch": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:better-sqlite3 --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src --watch",
     "start:server": "node dist-server/index.js",
+    "start:server:dev": "node --watch dist-server/index.js",
     "preview": "wrangler pages dev dist",
     "types": "tsc",
     "format": "prettier -w src/"
