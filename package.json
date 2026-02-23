@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:postgres --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:better-sqlite3 --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src",
     "start:server": "node dist-server/index.js",
     "preview": "wrangler pages dev dist",
     "types": "tsc",
@@ -27,14 +27,15 @@
     "@zag-js/menu": "^0.3.0",
     "@zag-js/solid": "^0.2.2",
     "@zag-js/toast": "^0.2.4",
+    "better-sqlite3": "^12.6.2",
     "fflate": "^0.7.4",
     "hono": "^4.2.8",
-    "postgres": "^3.4.4",
     "solid-js": "^1.6.3",
     "zoo-ids": "^2.0.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240423.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
     "autoprefixer": "^10.4.13",
     "esbuild": "^0.27.3",

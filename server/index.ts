@@ -21,7 +21,7 @@ const port = parseInt(process.env.PORT || "3000", 10);
 
 async function main() {
   // Run database migrations
-  await runMigrations();
+  runMigrations();
   console.log("Database migrations completed");
 
   serve(

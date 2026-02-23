@@ -1,26 +1,25 @@
 import { Hono } from "hono";
-import { getAllReplays, getReplayById } from "../db/index.js";
-import { downloadFile } from "../storage/b2.js";
+import { getAllReplays, getReplayByFileName } from "../db/index.js";
+import { downloadFile } from "../storage/local.js";
 
 const app = new Hono()
   .get("/replays", async (c) => {
-    const replays = await getAllReplays();
+    const replays = getAllReplays();
     const merged = replays.map((r) => ({
       ...r,
       players: typeof r.players === "string" ? JSON.parse(r.players) : r.players,
     }));
     return c.json({ data: merged });
   })
-  .get("/replay/:id", async (c) => {
-    const id = c.req.param("id");
+  .get("/replay/:fileName", async (c) => {
+    const fileName = c.req.param("fileName");
 
     // Check if replay exists in database
-    const replay = await getReplayById(id);
+    const replay = getReplayByFileName(fileName);
     if (!replay) {
       return c.notFound();
     }
 
-    // Download from B2
     const fileData = await downloadFile(replay.file_name);
     if (!fileData) {
       return c.notFound();

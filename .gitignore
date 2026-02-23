@@ -4,3 +4,7 @@ dist-server
 .env
 .dev.vars
 .wrangler
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/slp/
