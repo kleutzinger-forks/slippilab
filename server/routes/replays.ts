@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getAllReplays, getReplayByFileName, getAllSetsWithReplays, renameSet } from "../db/index.js";
-import { downloadFile } from "../storage/local.js";
+import { getAllReplays, getReplayByFileName, getAllSetsWithReplays, renameSet, clearAllData } from "../db/index.js";
+import { downloadFile, deleteAllFiles } from "../storage/local.js";
 
 const app = new Hono()
   .get("/replays", async (c) => {
@@ -21,6 +21,11 @@ const app = new Hono()
       })),
     }));
     return c.json({ data: merged });
+  })
+  .delete("/replays", async (c) => {
+    deleteAllFiles();
+    clearAllData();
+    return c.json({ ok: true });
   })
   .patch("/set/:id", async (c) => {
     const id = c.req.param("id");

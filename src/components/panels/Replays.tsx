@@ -4,7 +4,7 @@ import { characterNameByExternalId, stageNameByExternalId } from "~/common/ids";
 import { Picker } from "~/components/common/Picker";
 import { StageBadge } from "~/components/common/Badge";
 import { ReplayStub, refreshCloudSets, SelectionStore } from "~/state/selectionStore";
-import { ReplaySet, renameCloudSet } from "~/cloudClient";
+import { clearCloudData, ReplaySet, renameCloudSet } from "~/cloudClient";
 
 const filterProps = createOptions(
   [
@@ -71,6 +71,18 @@ export function Replays(props: { selectionStore: SelectionStore; sets?: ReplaySe
           </Show>
         </Show>
       </div>
+      <Show when={props.sets !== undefined}>
+        <button
+          class="mt-2 w-full rounded border border-red-300 py-1 text-xs text-red-400 hover:bg-red-50"
+          onClick={async () => {
+            if (!confirm("Delete all replays and sets? This cannot be undone.")) return;
+            await clearCloudData();
+            await refreshCloudSets();
+          }}
+        >
+          Delete all
+        </button>
+      </Show>
     </>
   );
 }

@@ -88,6 +88,11 @@ export function renameSet(id: string, name: string): void {
   db.prepare("UPDATE sets SET name = ? WHERE id = ?").run(name, id);
 }
 
+export function clearAllData(): void {
+  db.prepare("DELETE FROM replays").run();
+  db.prepare("DELETE FROM sets").run();
+}
+
 export function insertReplay(replay: {
   id: string;
   file_name: string;

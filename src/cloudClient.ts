@@ -122,6 +122,10 @@ export async function listCloudSets(): Promise<ReplaySet[]> {
   );
 }
 
+export async function clearCloudData(): Promise<void> {
+  await fetch("/api/replays", { method: "DELETE" });
+}
+
 export async function renameCloudSet(setId: string, name: string): Promise<void> {
   await fetch(`/api/set/${setId}`, {
     method: "PATCH",
