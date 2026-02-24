@@ -4,10 +4,33 @@ Base URL: `http://localhost:3000` (or wherever the server is hosted)
 
 ---
 
+## Compression
+
+Both endpoints accept gzip-compressed files. The server detects gzip automatically
+by magic bytes — no special headers required. Just gzip the file before sending.
+Duplicate detection is based on the decompressed content, so a compressed and
+uncompressed upload of the same file are treated as duplicates.
+
+**Python**
+```python
+import gzip
+with open("game.slp", "rb") as f:
+    compressed = gzip.compress(f.read())
+```
+
+**Kotlin / Android**
+```kotlin
+val compressed = ByteArrayOutputStream().also { baos ->
+    GZIPOutputStream(baos).use { it.write(File("game.slp").readBytes()) }
+}.toByteArray()
+```
+
+---
+
 ## Single file — `POST /api/replay`
 
-Send the raw `.slp` bytes as the request body. An optional `note` query parameter
-becomes the name of the set in the UI.
+Send the raw `.slp` bytes (or gzip-compressed bytes) as the request body.
+An optional `note` query parameter becomes the name of the set in the UI.
 
 Every upload (single or multi-file) creates a **set** (`batch_id`) that groups the
 files together. Sets are displayed in the sidebar newest-first and can be renamed.

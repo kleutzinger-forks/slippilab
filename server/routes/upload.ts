@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { createHash } from "crypto";
+import { gunzipSync } from "zlib";
 import { UbjsonDecoder } from "@jsonjoy.com/json-pack/lib/ubjson/index.js";
 import { parseReplay } from "../../src/parser/parser.js";
 import { insertReplay, insertSet, getReplayByHash, updateReplayBatch } from "../db/index.js";
@@ -7,12 +8,20 @@ import { uploadFile } from "../storage/local.js";
 // @ts-ignore: zoo-ids doesn't ship types
 import { generateId } from "zoo-ids";
 
+function maybeDecompress(bytes: Uint8Array): Uint8Array {
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    return new Uint8Array(gunzipSync(bytes));
+  }
+  return bytes;
+}
+
 // Returns { id, duplicate } — duplicate is true if the file was already uploaded.
 async function processSingleFile(
   bytes: Uint8Array,
   batchId: string | null,
   batchOrder: number | null
 ): Promise<{ id: string; duplicate: boolean }> {
+  bytes = maybeDecompress(bytes);
   const fileHash = createHash("sha256").update(bytes).digest("hex");
 
   const existing = getReplayByHash(fileHash);
