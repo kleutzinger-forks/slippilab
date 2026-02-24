@@ -31,6 +31,7 @@ async function main() {
     },
     (info) => {
       console.log(`Server running at http://localhost:${info.port}`);
+      console.log(`Upload endpoint:  http://localhost:${info.port}/api/replays`);
     }
   );
 }

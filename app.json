@@ -1,31 +1,7 @@
 {
-  "name": "slippilab",
-  "description": "SlippiLab - Slippi replay viewer and analyzer",
   "scripts": {
     "dokku": {
-      "predeploy": "npm run build && npm run build:server"
-    }
-  },
-  "env": {
-    "DATABASE_URL": {
-      "description": "PostgreSQL connection string",
-      "required": true
-    },
-    "B2_ENDPOINT": {
-      "description": "Backblaze B2 S3-compatible endpoint",
-      "required": true
-    },
-    "B2_BUCKET": {
-      "description": "Backblaze B2 bucket name",
-      "required": true
-    },
-    "B2_KEY_ID": {
-      "description": "Backblaze B2 application key ID",
-      "required": true
-    },
-    "B2_APP_KEY": {
-      "description": "Backblaze B2 application key",
-      "required": true
+      "predeploy": "cd /app && sh predeploy.sh"
     }
   }
 }

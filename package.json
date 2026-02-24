@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "start": "node dist-server/index.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --external:better-sqlite3 --external:@aws-sdk/* --external:@hono/* --external:hono --alias:~=./src",
