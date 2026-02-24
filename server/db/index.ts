@@ -88,9 +88,10 @@ export function renameSet(id: string, name: string): void {
   db.prepare("UPDATE sets SET name = ? WHERE id = ?").run(name, id);
 }
 
-export function clearAllData(): void {
-  db.prepare("DELETE FROM replays").run();
-  db.prepare("DELETE FROM sets").run();
+export function clearAllData(): { replays: number; sets: number } {
+  const replays = (db.prepare("DELETE FROM replays").run()).changes;
+  const sets = (db.prepare("DELETE FROM sets").run()).changes;
+  return { replays, sets };
 }
 
 export function insertReplay(replay: {

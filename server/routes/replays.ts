@@ -23,8 +23,10 @@ const app = new Hono()
     return c.json({ data: merged });
   })
   .delete("/replays", async (c) => {
-    deleteAllFiles();
-    clearAllData();
+    const files = deleteAllFiles();
+    const counts = clearAllData();
+    console.log(`[delete-all] removed ${counts.replays} replay(s), ${counts.sets} set(s)`);
+    console.log(`[delete-all] deleted files:\n${files.map(f => `  ${f}`).join("\n")}`);
     return c.json({ ok: true });
   })
   .patch("/set/:id", async (c) => {

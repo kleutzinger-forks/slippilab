@@ -32,8 +32,10 @@ export async function deleteFile(key: string): Promise<void> {
   }
 }
 
-export function deleteAllFiles(): void {
-  for (const file of fs.readdirSync(slpDir)) {
+export function deleteAllFiles(): string[] {
+  const files = fs.readdirSync(slpDir);
+  for (const file of files) {
     fs.unlinkSync(path.join(slpDir, file));
   }
+  return files;
 }
