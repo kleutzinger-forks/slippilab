@@ -3,7 +3,7 @@ import path from "path";
 
 const dbPath = path.resolve(process.cwd(), "data/slippilab.db");
 
-const db = new Database(dbPath);
+export const db = new Database(dbPath);
 
 // Enable WAL mode for better concurrent read performance
 db.pragma("journal_mode = WAL");

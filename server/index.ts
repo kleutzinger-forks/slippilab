@@ -4,8 +4,12 @@ import { Hono } from "hono";
 import { runMigrations } from "./db/index.js";
 import replaysRoutes from "./routes/replays.js";
 import uploadRoutes from "./routes/upload.js";
+import adminRoutes from "./routes/admin.js";
 
 const app = new Hono();
+
+// Admin UI
+app.route("/admin", adminRoutes);
 
 // API routes
 app.route("/api", replaysRoutes);
