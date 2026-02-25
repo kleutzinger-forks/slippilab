@@ -29,7 +29,16 @@ export function Controls() {
     window.removeEventListener("keyup", onKeyUp);
   });
 
-  function onKeyDown({ key }: KeyboardEvent): void {
+  function onKeyDown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+    const { key } = event;
     switch (key) {
       case "k":
       case "K":
@@ -109,7 +118,16 @@ export function Controls() {
     }
   }
 
-  function onKeyUp({ key }: KeyboardEvent): void {
+  function onKeyUp(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+    const { key } = event;
     switch (key) {
       case "ArrowUp":
       case "ArrowDown":
