@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { db, getAllSetsWithReplays, deleteSetWithReplays } from "../db/index.js";
-import { deleteFile } from "../storage/local.js";
+import { db, getAllSetsWithReplays, deleteSetWithReplays, clearAllData } from "../db/index.js";
+import { deleteFile, deleteAllFiles } from "../storage/local.js";
 
 type ColInfo = {
   cid: number;
@@ -400,7 +400,7 @@ admin.get("/sets", (c) => {
   const content = `
     <h2 class="text-xl font-semibold mb-2">Sets Manager</h2>
     <p class="text-gray-400 text-sm mb-5">Delete a set and all its associated replay files and database records.</p>
-    <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-x-auto">
+    <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-x-auto mb-10">
       <table class="w-full">
         <thead class="bg-gray-800">
           <tr>
@@ -412,9 +412,23 @@ admin.get("/sets", (c) => {
         </thead>
         <tbody>${rows || `<tr><td colspan="4" class="py-8 text-center text-gray-500">No sets found</td></tr>`}</tbody>
       </table>
+    </div>
+    <div class="border border-red-900 rounded-lg p-5 max-w-md">
+      <h3 class="text-red-400 font-semibold mb-1">Danger Zone</h3>
+      <p class="text-gray-400 text-sm mb-4">Permanently delete all sets, replays, and .slp files. This cannot be undone.</p>
+      <form method="POST" action="/admin/sets/clear-all" onsubmit="return confirm('Delete ALL sets, replays, and files? This cannot be undone.')">
+        <button type="submit" class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded text-sm font-medium">Clear All Data</button>
+      </form>
     </div>`;
 
   return c.html(layout("Sets Manager", tables, content, undefined, "sets"));
+});
+
+admin.post("/sets/clear-all", async (c) => {
+  const files = deleteAllFiles();
+  const counts = clearAllData();
+  console.log(`[admin/sets] cleared all data: ${counts.replays} replay(s), ${counts.sets} set(s), ${files.length} file(s)`);
+  return c.redirect("/admin/sets");
 });
 
 admin.post("/sets/:id/delete", async (c) => {

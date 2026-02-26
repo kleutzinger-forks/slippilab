@@ -4,7 +4,7 @@ import { characterNameByExternalId, stageNameByExternalId } from "~/common/ids";
 import { Picker } from "~/components/common/Picker";
 import { StageBadge } from "~/components/common/Badge";
 import { ReplayStub, refreshCloudSets, SelectionStore } from "~/state/selectionStore";
-import { clearCloudData, ReplaySet, renameCloudSet } from "~/cloudClient";
+import { ReplaySet, renameCloudSet } from "~/cloudClient";
 
 const filterProps = createOptions(
   [
@@ -24,7 +24,7 @@ export function Replays(props: { selectionStore: SelectionStore; sets?: ReplaySe
 
   return (
     <>
-      <div class="flex max-h-96 w-full flex-col items-center gap-2 overflow-y-auto sm:h-full md:max-h-screen">
+      <div class="flex h-full w-full flex-col items-center gap-2 overflow-y-auto">
         <div
           class="w-full"
           // don't trigger global shortcuts when typing in the filter box
@@ -71,18 +71,6 @@ export function Replays(props: { selectionStore: SelectionStore; sets?: ReplaySe
           </Show>
         </Show>
       </div>
-      <Show when={props.sets !== undefined}>
-        <button
-          class="mt-2 w-full rounded border border-red-300 py-1 text-xs text-red-400 hover:bg-red-50"
-          onClick={async () => {
-            if (!confirm("Delete all replays and sets? This cannot be undone.")) return;
-            await clearCloudData();
-            await refreshCloudSets();
-          }}
-        >
-          Delete all
-        </button>
-      </Show>
     </>
   );
 }

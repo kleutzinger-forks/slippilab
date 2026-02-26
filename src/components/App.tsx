@@ -53,7 +53,7 @@ export function App() {
     <>
       {/* Mobile-only: full-screen set list when no replay is selected */}
       <Show when={replayStore.replayData === undefined}>
-        <div class="fixed inset-0 z-10 flex flex-col overflow-y-auto bg-white p-4 lg:hidden">
+        <div class="fixed inset-0 z-10 flex flex-col overflow-hidden bg-white p-4 lg:hidden">
           <Replays selectionStore={cloudLibrary} sets={cloudSets()} />
         </div>
       </Show>
