@@ -5,6 +5,7 @@ import { Show } from "solid-js";
 import { filterFiles } from "~/common/util";
 import { ToastGroup } from "~/components/common/toaster";
 import { Navigation } from "~/components/panels/Navigation";
+import { Replays } from "~/components/panels/Replays";
 import { Sidebar } from "~/components/panels/Sidebar";
 import { TopBar } from "~/components/panels/TopBar";
 import { Viewer } from "~/components/viewer/Viewer";
@@ -13,7 +14,7 @@ import { replayStore } from "~/state/replayStore";
 import { fetchAnimations } from "~/viewer/animationCache";
 import "~/state/fileStore";
 import "~/state/replayStore";
-import "~/state/selectionStore";
+import { cloudLibrary, cloudSets } from "~/state/selectionStore";
 import { setSidebar } from "~/state/navigationStore";
 
 export function App() {
@@ -50,6 +51,12 @@ export function App() {
 
   return (
     <>
+      {/* Mobile-only: full-screen set list when no replay is selected */}
+      <Show when={replayStore.replayData === undefined}>
+        <div class="fixed inset-0 z-10 flex flex-col overflow-y-auto bg-white p-4 lg:hidden">
+          <Replays selectionStore={cloudLibrary} sets={cloudSets()} />
+        </div>
+      </Show>
       <Show
         when={!replayStore.isFullscreen}
         fallback={

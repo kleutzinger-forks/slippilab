@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { db } from "../db/index.js";
+import { db, getAllSetsWithReplays, deleteSetWithReplays } from "../db/index.js";
+import { deleteFile } from "../storage/local.js";
 
 type ColInfo = {
   cid: number;
@@ -33,13 +34,15 @@ function esc(val: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
-function layout(title: string, tables: string[], content: string, currentTable?: string): string {
+function layout(title: string, tables: string[], content: string, currentTable?: string, currentSection?: string): string {
   const sidebarLinks = tables
     .map((t) => {
       const active = t === currentTable ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-700 hover:text-white";
       return `<a href="/admin/table/${esc(t)}" class="block px-3 py-1.5 rounded text-sm ${active}">${esc(t)}</a>`;
     })
     .join("");
+
+  const setsActive = currentSection === "sets" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-700 hover:text-white";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -54,9 +57,17 @@ function layout(title: string, tables: string[], content: string, currentTable?:
     <a href="/admin" class="text-lg font-bold text-white tracking-tight">SlippiLab Admin</a>
   </header>
   <div class="flex flex-1 min-h-0">
-    <nav class="w-48 bg-gray-900 border-r border-gray-700 p-4 flex-shrink-0">
-      <p class="text-xs font-semibold uppercase text-gray-500 mb-2 tracking-wider">Tables</p>
-      <div class="space-y-0.5">${sidebarLinks}</div>
+    <nav class="w-48 bg-gray-900 border-r border-gray-700 p-4 flex-shrink-0 space-y-4">
+      <div>
+        <p class="text-xs font-semibold uppercase text-gray-500 mb-2 tracking-wider">Tables</p>
+        <div class="space-y-0.5">${sidebarLinks}</div>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase text-gray-500 mb-2 tracking-wider">Tools</p>
+        <div class="space-y-0.5">
+          <a href="/admin/sets" class="block px-3 py-1.5 rounded text-sm ${setsActive}">Sets Manager</a>
+        </div>
+      </div>
     </nav>
     <main class="flex-1 p-6 overflow-auto">${content}</main>
   </div>
@@ -361,6 +372,59 @@ admin.post("/table/:table/new", async (c) => {
 
   db.prepare(`INSERT INTO "${tableName}" (${colNames}) VALUES (${placeholders})`).run(...values);
   return c.redirect(`/admin/table/${tableName}`);
+});
+
+// Sets Manager
+admin.get("/sets", (c) => {
+  const tables = getTables();
+  const sets = getAllSetsWithReplays();
+
+  const rows = sets
+    .map((set) => {
+      const displayName = set.name?.trim() || "Unnamed Set";
+      const replayCount = set.replays.length;
+      return `<tr class="border-b border-gray-800 hover:bg-gray-800/50">
+        <td class="py-2.5 px-4 font-medium">${esc(displayName)}</td>
+        <td class="py-2.5 px-4 text-gray-400 text-sm">${esc(set.created_at)}</td>
+        <td class="py-2.5 px-4 text-gray-400 text-sm">${replayCount} replay${replayCount !== 1 ? "s" : ""}</td>
+        <td class="py-2.5 px-4 whitespace-nowrap">
+          <form method="POST" action="/admin/sets/${encodeURIComponent(set.id)}/delete" class="inline"
+            onsubmit="return confirm('Delete set \\'${esc(displayName)}\\' and all its replays? This cannot be undone.')">
+            <button type="submit" class="text-red-400 hover:underline text-sm">Delete Set</button>
+          </form>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  const content = `
+    <h2 class="text-xl font-semibold mb-2">Sets Manager</h2>
+    <p class="text-gray-400 text-sm mb-5">Delete a set and all its associated replay files and database records.</p>
+    <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-800">
+          <tr>
+            <th class="py-2 px-4 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Name</th>
+            <th class="py-2 px-4 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Created</th>
+            <th class="py-2 px-4 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Replays</th>
+            <th class="py-2 px-4 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="4" class="py-8 text-center text-gray-500">No sets found</td></tr>`}</tbody>
+      </table>
+    </div>`;
+
+  return c.html(layout("Sets Manager", tables, content, undefined, "sets"));
+});
+
+admin.post("/sets/:id/delete", async (c) => {
+  const id = c.req.param("id");
+  const { fileNames } = deleteSetWithReplays(id);
+  for (const fileName of fileNames) {
+    await deleteFile(fileName);
+  }
+  console.log(`[admin/sets] deleted set ${id}, removed ${fileNames.length} file(s)`);
+  return c.redirect("/admin/sets");
 });
 
 export default admin;

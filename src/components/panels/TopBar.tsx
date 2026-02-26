@@ -7,7 +7,17 @@ import { currentSelectionStore } from "~/state/selectionStore";
 export function TopBar() {
   return (
     <div class="grid grid-cols-5 items-center">
-      <OpenMenu />
+      <div class="flex items-center">
+        <button
+          class="whitespace-nowrap text-sm text-slate-600 hover:text-slate-900 lg:hidden"
+          onClick={() => currentSelectionStore().deselect()}
+        >
+          ← Sets
+        </button>
+        <span class="hidden lg:block">
+          <OpenMenu />
+        </span>
+      </div>
       <Show when={currentSelectionStore().data.selectedFileAndStub}>
         <div class="text col-span-3 flex items-center gap-4 justify-self-center">
           <ArrowLeft

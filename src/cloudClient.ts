@@ -133,3 +133,7 @@ export async function renameCloudSet(setId: string, name: string): Promise<void>
     body: JSON.stringify({ name }),
   });
 }
+
+export async function deleteCloudSet(setId: string): Promise<void> {
+  await fetch(`/api/set/${setId}`, { method: "DELETE" });
+}

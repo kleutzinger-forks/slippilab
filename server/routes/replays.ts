@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getAllReplays, getReplayByFileName, getAllSetsWithReplays, renameSet, clearAllData } from "../db/index.js";
-import { downloadFile, deleteAllFiles } from "../storage/local.js";
+import { getAllReplays, getReplayByFileName, getAllSetsWithReplays, renameSet, clearAllData, deleteSetWithReplays } from "../db/index.js";
+import { downloadFile, deleteAllFiles, deleteFile } from "../storage/local.js";
 
 const app = new Hono()
   .get("/replays", async (c) => {
@@ -33,6 +33,15 @@ const app = new Hono()
     const id = c.req.param("id");
     const { name } = await c.req.json<{ name: string }>();
     renameSet(id, name);
+    return c.json({ ok: true });
+  })
+  .delete("/set/:id", async (c) => {
+    const id = c.req.param("id");
+    const { fileNames } = deleteSetWithReplays(id);
+    for (const fileName of fileNames) {
+      await deleteFile(fileName);
+    }
+    console.log(`[delete-set] deleted set ${id}, removed ${fileNames.length} file(s)`);
     return c.json({ ok: true });
   })
   .get("/replay/:fileName", async (c) => {

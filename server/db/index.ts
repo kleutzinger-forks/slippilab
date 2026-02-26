@@ -94,6 +94,14 @@ export function clearAllData(): { replays: number; sets: number } {
   return { replays, sets };
 }
 
+export function deleteSetWithReplays(id: string): { fileNames: string[] } {
+  const replays = getSetReplays(id);
+  const fileNames = replays.map((r) => r.file_name);
+  db.prepare("DELETE FROM replays WHERE batch_id = ?").run(id);
+  db.prepare("DELETE FROM sets WHERE id = ?").run(id);
+  return { fileNames };
+}
+
 export function insertReplay(replay: {
   id: string;
   file_name: string;
