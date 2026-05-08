@@ -4,6 +4,7 @@ import "@thisbeyond/solid-select/style.css";
 import { Show } from "solid-js";
 import { filterFiles } from "~/common/util";
 import { ToastGroup } from "~/components/common/toaster";
+import { Corrector } from "~/components/Corrector";
 import { Navigation } from "~/components/panels/Navigation";
 import { Replays } from "~/components/panels/Replays";
 import { Sidebar } from "~/components/panels/Sidebar";
@@ -18,6 +19,10 @@ import { cloudLibrary, cloudSets } from "~/state/selectionStore";
 import { setSidebar } from "~/state/navigationStore";
 
 export function App() {
+  if (location.pathname === "/corrector") {
+    return <Corrector />;
+  }
+
   // Get started fetching the most popular characters
   void fetchAnimations(20); // Falco
   void fetchAnimations(2); // Fox

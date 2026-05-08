@@ -95,7 +95,9 @@ function GroupedSetList(props: { sets: ReplaySet[]; selectionStore: SelectionSto
       <For each={props.sets}>
         {(set) => {
           const visibleReplays = createMemo(() => {
-            const ordered = [...set.replays].reverse();
+            // set.replays already arrives in play order (oldest first) from the
+            // server; keep that order so (1) is the first game played.
+            const ordered = set.replays;
             return filtersActive()
               ? ordered.filter((r) => filteredSet().has(r))
               : ordered;

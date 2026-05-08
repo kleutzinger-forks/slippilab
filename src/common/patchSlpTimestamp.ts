@@ -1,5 +1,6 @@
 // Byte-level patcher for the `startAt` ISO 8601 timestamp embedded in the UBJSON
-// metadata section of a Slippi replay. Ported from the slpIngestAndroid app
+// metadata section of a Slippi replay. Pure Uint8Array math — safe to use from
+// both server and browser. Ported from the slpIngestAndroid app
 // (src/services/replayPatchService.ts). The replacement is the same length as
 // the original so the surrounding UBJSON structure stays valid.
 
@@ -49,7 +50,5 @@ export function patchSlpStartAt(
   const new24 = newIso;
   const old20 = old24.slice(0, 19) + "Z";
   const new20 = new24.slice(0, 19) + "Z";
-  return (
-    patchOnce(bytes, old20, new20) ?? patchOnce(bytes, old24, new24)
-  );
+  return patchOnce(bytes, old20, new20) ?? patchOnce(bytes, old24, new24);
 }

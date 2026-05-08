@@ -57,7 +57,7 @@ export function updateReplayBatch(id: string, batchId: string, batchOrder: numbe
 
 export function getSetReplays(setId: string): ReplayRecord[] {
   return db
-    .prepare("SELECT * FROM replays WHERE batch_id = ? ORDER BY batch_order ASC")
+    .prepare("SELECT * FROM replays WHERE batch_id = ? ORDER BY COALESCE(played_on, '9999') ASC, batch_order ASC")
     .all(setId) as ReplayRecord[];
 }
 
@@ -79,7 +79,7 @@ export function getAllSetsWithReplays(): SetRecordWithReplays[] {
   return sets.map((set) => ({
     ...set,
     replays: db.prepare(
-      "SELECT * FROM replays WHERE batch_id = ? ORDER BY batch_order ASC"
+      "SELECT * FROM replays WHERE batch_id = ? ORDER BY COALESCE(played_on, '9999') ASC, batch_order ASC"
     ).all(set.id) as ReplayRecord[],
   }));
 }

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createHash } from "crypto";
 import { db, getAllSetsWithReplays, deleteSetWithReplays, clearAllData, getSetReplays } from "../db/index.js";
 import { deleteFile, deleteAllFiles, downloadFile, uploadFile } from "../storage/local.js";
-import { patchSlpStartAt } from "../storage/patchTimestamp.js";
+import { patchSlpStartAt } from "../../src/common/patchSlpTimestamp.js";
 
 type ColInfo = {
   cid: number;
