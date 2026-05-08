@@ -1,6 +1,8 @@
 import { Hono } from "hono";
-import { db, getAllSetsWithReplays, deleteSetWithReplays, clearAllData } from "../db/index.js";
-import { deleteFile, deleteAllFiles } from "../storage/local.js";
+import { createHash } from "crypto";
+import { db, getAllSetsWithReplays, deleteSetWithReplays, clearAllData, getSetReplays } from "../db/index.js";
+import { deleteFile, deleteAllFiles, downloadFile, uploadFile } from "../storage/local.js";
+import { patchSlpStartAt } from "../storage/patchTimestamp.js";
 
 type ColInfo = {
   cid: number;
@@ -388,6 +390,7 @@ admin.get("/sets", (c) => {
         <td class="py-2.5 px-4 text-gray-400 text-sm">${esc(set.created_at)}</td>
         <td class="py-2.5 px-4 text-gray-400 text-sm">${replayCount} replay${replayCount !== 1 ? "s" : ""}</td>
         <td class="py-2.5 px-4 whitespace-nowrap">
+          <a href="/admin/sets/${encodeURIComponent(set.id)}/correct-time" class="text-blue-400 hover:underline text-sm mr-3">Correct Time</a>
           <form method="POST" action="/admin/sets/${encodeURIComponent(set.id)}/delete" class="inline"
             onsubmit="return confirm('Delete set \\'${esc(displayName)}\\' and all its replays? This cannot be undone.')">
             <button type="submit" class="text-red-400 hover:underline text-sm">Delete Set</button>
@@ -438,6 +441,215 @@ admin.post("/sets/:id/delete", async (c) => {
     await deleteFile(fileName);
   }
   console.log(`[admin/sets] deleted set ${id}, removed ${fileNames.length} file(s)`);
+  return c.redirect("/admin/sets");
+});
+
+// Correct Time: ask the user when the first game of this set actually happened
+// (in their local time) and shift every replay's startAt by the same offset.
+admin.get("/sets/:id/correct-time", (c) => {
+  const id = c.req.param("id");
+  const tables = getTables();
+  const setRow = db
+    .prepare("SELECT * FROM sets WHERE id = ?")
+    .get(id) as { id: string; name: string | null; created_at: string } | undefined;
+  if (!setRow) return c.notFound();
+
+  const replays = getSetReplays(id);
+  if (replays.length === 0) {
+    return c.html(layout("Correct Time", tables, `
+      <div class="flex items-center gap-3 mb-5">
+        <a href="/admin/sets" class="text-gray-400 hover:text-white text-sm">← Sets Manager</a>
+      </div>
+      <p class="text-gray-400">This set has no replays.</p>`, undefined, "sets"));
+  }
+
+  const displayName = setRow.name?.trim() || "Unnamed Set";
+  const firstReplay = replays[0]!;
+  const firstPlayedOn = firstReplay.played_on;
+
+  if (!firstPlayedOn) {
+    return c.html(layout("Correct Time", tables, `
+      <div class="flex items-center gap-3 mb-5">
+        <a href="/admin/sets" class="text-gray-400 hover:text-white text-sm">← Sets Manager</a>
+        <span class="text-gray-700">/</span>
+        <h2 class="text-xl font-semibold">${esc(displayName)}</h2>
+      </div>
+      <p class="text-red-400">First replay has no startAt timestamp; cannot compute a correction offset.</p>`, undefined, "sets"));
+  }
+
+  const replayRows = replays
+    .map((r, i) => `<tr class="border-b border-gray-800">
+      <td class="py-1.5 px-3 text-sm">${i + 1}</td>
+      <td class="py-1.5 px-3 text-sm font-mono text-gray-400">${esc(r.played_on ?? "—")}</td>
+      <td class="py-1.5 px-3 text-sm font-mono text-gray-500" data-original-iso="${esc(r.played_on ?? "")}" data-preview-cell></td>
+    </tr>`)
+    .join("");
+
+  const content = `
+    <div class="flex items-center gap-3 mb-5">
+      <a href="/admin/sets" class="text-gray-400 hover:text-white text-sm">← Sets Manager</a>
+      <span class="text-gray-700">/</span>
+      <h2 class="text-xl font-semibold">Correct Time – ${esc(displayName)}</h2>
+    </div>
+
+    <p class="text-gray-400 text-sm mb-5 max-w-2xl">
+      Enter when the <strong>first game</strong> of this set actually happened (in your local time).
+      Every replay in the set will be shifted by the same offset, both in the database and inside
+      the .slp file's metadata.
+    </p>
+
+    <form method="POST" action="/admin/sets/${esc(id)}/correct-time" id="correct-form" class="max-w-2xl mb-8"
+      onsubmit="return confirm('Patch ' + ${replays.length} + ' replay file(s) and update their timestamps?')">
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-300 mb-1">First game's stored timestamp (UTC)</label>
+        <input type="text" value="${esc(firstPlayedOn)}" disabled
+          class="w-full bg-gray-800/40 border border-gray-700 rounded px-3 py-2 text-sm text-gray-500 font-mono cursor-not-allowed">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-300 mb-1">Corrected first-game time (your local time)</label>
+        <input type="datetime-local" id="local-input" step="1" required
+          class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono">
+        <p class="text-xs text-gray-500 mt-1">Pre-filled with the existing timestamp converted to your local time.</p>
+      </div>
+      <input type="hidden" name="corrected_iso" id="corrected-iso">
+      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-800">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">Apply Correction</button>
+        <a href="/admin/sets" class="text-gray-400 hover:text-white px-4 py-2 text-sm">Cancel</a>
+      </div>
+    </form>
+
+    <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Replays in this set (${replays.length})</h3>
+    <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-x-auto max-w-3xl">
+      <table class="w-full">
+        <thead class="bg-gray-800">
+          <tr>
+            <th class="py-2 px-3 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">#</th>
+            <th class="py-2 px-3 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Current played_on</th>
+            <th class="py-2 px-3 text-left text-xs uppercase text-gray-500 font-semibold tracking-wider">Preview after correction</th>
+          </tr>
+        </thead>
+        <tbody>${replayRows}</tbody>
+      </table>
+    </div>
+
+    <script>
+      (function () {
+        var firstUtc = ${JSON.stringify(firstPlayedOn)};
+        var localInput = document.getElementById('local-input');
+        var hidden = document.getElementById('corrected-iso');
+        var form = document.getElementById('correct-form');
+        var previewCells = document.querySelectorAll('[data-preview-cell]');
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+        function toLocalInput(d) {
+          return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+            + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        }
+        function shortIso(d) {
+          return d.toISOString().slice(0, 19) + 'Z';
+        }
+
+        var firstDate = new Date(firstUtc);
+        if (!isNaN(firstDate.getTime())) {
+          localInput.value = toLocalInput(firstDate);
+        }
+
+        function refreshPreview() {
+          if (!localInput.value) return;
+          var corrected = new Date(localInput.value);
+          if (isNaN(corrected.getTime())) return;
+          var offsetMs = corrected.getTime() - firstDate.getTime();
+          previewCells.forEach(function (cell) {
+            var iso = cell.getAttribute('data-original-iso');
+            if (!iso) { cell.textContent = '—'; return; }
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) { cell.textContent = '—'; return; }
+            cell.textContent = shortIso(new Date(d.getTime() + offsetMs));
+          });
+        }
+
+        localInput.addEventListener('input', refreshPreview);
+        refreshPreview();
+
+        form.addEventListener('submit', function () {
+          if (!localInput.value) return;
+          var d = new Date(localInput.value);
+          if (!isNaN(d.getTime())) hidden.value = d.toISOString();
+        });
+      })();
+    </script>`;
+
+  return c.html(layout(`Correct Time – ${displayName}`, tables, content, undefined, "sets"));
+});
+
+admin.post("/sets/:id/correct-time", async (c) => {
+  const id = c.req.param("id");
+  const replays = getSetReplays(id);
+  if (replays.length === 0) return c.notFound();
+
+  const firstReplay = replays[0]!;
+  if (!firstReplay.played_on) {
+    return c.text("First replay has no played_on timestamp; cannot compute offset.", 400);
+  }
+
+  const body = await c.req.parseBody();
+  const correctedIso = String(body.corrected_iso ?? "").trim();
+  if (!correctedIso) return c.text("Missing corrected timestamp.", 400);
+
+  const correctedDate = new Date(correctedIso);
+  if (isNaN(correctedDate.getTime())) return c.text("Invalid corrected timestamp.", 400);
+
+  const originalFirst = new Date(firstReplay.played_on);
+  if (isNaN(originalFirst.getTime())) {
+    return c.text("Could not parse first replay's played_on.", 400);
+  }
+
+  const offsetMs = correctedDate.getTime() - originalFirst.getTime();
+
+  const updateStmt = db.prepare(
+    "UPDATE replays SET played_on = ?, file_hash = ? WHERE id = ?"
+  );
+
+  let patched = 0;
+  let dbOnly = 0;
+  let missing = 0;
+
+  for (const replay of replays) {
+    if (!replay.played_on) continue;
+    const orig = new Date(replay.played_on);
+    if (isNaN(orig.getTime())) continue;
+
+    const newDate = new Date(orig.getTime() + offsetMs);
+    const newIsoFull = newDate.toISOString();
+    // Match the format the original file/DB used (20-char vs 24-char) for the
+    // DB write so unpatched and patched rows stay consistent.
+    const newPlayedOn =
+      replay.played_on.length === 20 ? newIsoFull.slice(0, 19) + "Z" : newIsoFull;
+
+    const bytes = await downloadFile(replay.file_name);
+    if (!bytes) {
+      console.warn(`[admin/correct-time] missing file: ${replay.file_name}`);
+      missing++;
+      continue;
+    }
+
+    const newBytes = patchSlpStartAt(bytes, replay.played_on, newIsoFull);
+    if (!newBytes) {
+      console.warn(`[admin/correct-time] startAt not found in ${replay.file_name}; updating DB only`);
+      updateStmt.run(newPlayedOn, replay.file_hash, replay.id);
+      dbOnly++;
+      continue;
+    }
+
+    await uploadFile(replay.file_name, newBytes);
+    const newHash = createHash("sha256").update(newBytes).digest("hex");
+    updateStmt.run(newPlayedOn, newHash, replay.id);
+    patched++;
+  }
+
+  console.log(
+    `[admin/correct-time] set=${id} offsetMs=${offsetMs} patched=${patched} dbOnly=${dbOnly} missing=${missing}`
+  );
   return c.redirect("/admin/sets");
 });
 
