@@ -5,6 +5,7 @@ import { Picker } from "~/components/common/Picker";
 import { StageBadge } from "~/components/common/Badge";
 import { ReplayStub, refreshCloudSets, SelectionStore } from "~/state/selectionStore";
 import { ReplaySet, renameCloudSet } from "~/cloudClient";
+import { SetUploadDialog } from "~/components/panels/SetUploadDialog";
 
 const filterProps = createOptions(
   [
@@ -21,10 +22,16 @@ const filterProps = createOptions(
 );
 export function Replays(props: { selectionStore: SelectionStore; sets?: ReplaySet[] }) {
   const hasSets = createMemo(() => props.sets !== undefined && props.sets.length > 0);
+  const isCloud = createMemo(() => props.sets !== undefined);
 
   return (
     <>
       <div class="flex h-full w-full flex-col items-center gap-2 overflow-y-auto">
+        <Show when={isCloud()}>
+          <div class="flex w-full justify-end">
+            <SetUploadDialog />
+          </div>
+        </Show>
         <div
           class="w-full"
           // don't trigger global shortcuts when typing in the filter box

@@ -55,6 +55,45 @@ export async function uploadReplay(
   return await res.json();
 }
 
+export interface UploadSetResult {
+  batch_id: string;
+  data: Array<{ id: string | null; duplicate: boolean; error: string | null }>;
+}
+
+export async function uploadSet(
+  files: File[],
+  note: string,
+  onProgress?: (pct: number) => void
+): Promise<UploadSetResult> {
+  const form = new FormData();
+  form.append("note", note);
+  for (const f of files) {
+    form.append("files", f, f.name);
+  }
+  return await new Promise<UploadSetResult>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/replays");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch (e) {
+          reject(new Error(`bad response: ${xhr.responseText}`));
+        }
+      } else {
+        reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("network error"));
+    xhr.send(form);
+  });
+}
+
 export async function loadFromCloud(
   name: string,
   load?: (files: File[]) => Promise<void>

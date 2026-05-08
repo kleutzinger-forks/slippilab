@@ -1,6 +1,6 @@
 import { JSX, splitProps } from "solid-js";
 
-export function PrimaryButton(props: JSX.HTMLAttributes<HTMLButtonElement>) {
+export function PrimaryButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
   const [classProp, otherProps] = splitProps(props, ["class"]);
   return (
     <button
@@ -15,7 +15,7 @@ export function PrimaryButton(props: JSX.HTMLAttributes<HTMLButtonElement>) {
   );
 }
 
-export function SecondaryButton(props: JSX.HTMLAttributes<HTMLButtonElement>) {
+export function SecondaryButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
   const [classProp, otherProps] = splitProps(props, ["class"]);
   return (
     <button
@@ -30,7 +30,7 @@ export function SecondaryButton(props: JSX.HTMLAttributes<HTMLButtonElement>) {
   );
 }
 
-export function WhiteButton(props: JSX.HTMLAttributes<HTMLButtonElement>) {
+export function WhiteButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
   const [classProp, otherProps] = splitProps(props, ["class"]);
   return (
     <button
