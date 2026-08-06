@@ -268,7 +268,7 @@ export function Corrector() {
 
         const newDate = computeNewDate(p, i);
         if (newDate && p.startAt) {
-          const patched = patchSlpStartAt(p.bytes, p.startAt, newDate.toISOString());
+          const patched = patchSlpStartAt(p.bytes, newDate.toISOString());
           if (patched) outBytes = patched;
         }
 

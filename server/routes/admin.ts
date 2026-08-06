@@ -633,7 +633,7 @@ admin.post("/sets/:id/correct-time", async (c) => {
       continue;
     }
 
-    const newBytes = patchSlpStartAt(bytes, replay.played_on, newIsoFull);
+    const newBytes = patchSlpStartAt(bytes, newPlayedOn);
     if (!newBytes) {
       console.warn(`[admin/correct-time] startAt not found in ${replay.file_name}; updating DB only`);
       updateStmt.run(newPlayedOn, replay.file_hash, replay.id);
